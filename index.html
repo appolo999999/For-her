@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>لكِ وحدكِ ❤️</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#08000c;--pink:#ff3d8b;--rose:#ff9ac4;--gold:#ffd9a0;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:'Amiri','Cairo',Tahoma,serif;color:#fff;text-align:center}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#gate{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;border:0;color:#fff;font-family:inherit;cursor:pointer;width:100%;transition:opacity 1s}
+#gate.out{opacity:0;pointer-events:none}
+#gate .h{font-size:min(36vw,160px);filter:drop-shadow(0 0 26px var(--pink));animation:beat 1.2s infinite}
+#gate .t{font-size:1.6rem;margin-top:14px;color:var(--rose)}
+#gate .s{font-size:1rem;opacity:.7;margin-top:6px}
+@keyframes beat{0%,100%{transform:scale(1)}30%{transform:scale(1.16)}60%{transform:scale(.97)}}
+#num{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Cairo';font-size:min(45vw,260px);font-weight:900;color:#ff6fb0;text-shadow:0 0 30px var(--pink),0 0 70px var(--pink);transition:opacity .6s,transform .6s;pointer-events:none;z-index:3}
+#num.out{opacity:0;transform:scale(2)}
+#photo{position:fixed;left:50%;top:36%;width:min(30vw,130px);height:min(30vw,130px);transform:translate(-50%,-50%);border-radius:50%;object-fit:cover;border:3px solid var(--rose);box-shadow:0 0 30px var(--pink);opacity:0;transition:opacity 2s;z-index:4;display:none}
+#photo.on{opacity:1}
+#txt{position:fixed;left:0;right:0;bottom:calc(4% + env(safe-area-inset-bottom,0px));padding:0 22px;opacity:0;transition:opacity 1.6s;z-index:4}
+#txt.on{opacity:1}
+h1{margin:0 0 8px;font-family:'Cairo';font-size:min(9.5vw,2.6rem);font-weight:900;background:linear-gradient(90deg,var(--gold),var(--pink),var(--gold));background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:s 4s linear infinite}
+@keyframes s{to{background-position:200% center}}
+#ln{max-width:440px;margin:0 auto;font-size:min(5.6vw,1.45rem);line-height:2;min-height:6.5em;display:flex;align-items:center;justify-content:center;text-shadow:0 0 10px #000,0 0 22px #000;transition:opacity .8s}
+#ln.hide{opacity:0}
+#again{display:none;margin-top:6px;padding:8px 22px;border-radius:999px;border:1px solid var(--pink);background:rgba(0,0,0,.45);color:#fff;font-family:inherit;font-size:1.05rem;cursor:pointer}
+#snd{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;z-index:30;width:42px;height:42px;border-radius:50%;border:1px solid var(--pink);background:rgba(0,0,0,.5);color:#fff;font-size:1.2rem;cursor:pointer;display:none}
+.pt{position:fixed;top:-60px;z-index:2;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(115vh) rotate(260deg)}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<img id="photo" alt="">
+<div id="num"></div>
+<div id="txt">
+  <h1>عيد ميلاد سعيد يا حبيبتي</h1>
+  <div id="ln"></div>
+  <button id="again">↻ أعيدي المشهد</button>
+</div>
+<button id="snd" aria-label="الصوت">🔊</button>
+<button id="gate"><div class="h">❤️</div><div class="t">مفاجأة صغيرة لكِ…</div><div class="s">اضغطي على القلب</div></button>
+<script>
+var PHOTO = ""; // ضع هنا صورة بصيغة data:image/jpeg;base64,... إن أردت
+var LINES = [
+  "في مثل هذا اليوم، أهدت الدنيا قلباً جميلاً اسمه حبيبتي، فصار العالم أرحم وأدفأ.",
+  "قلبكِ الطيب يسبق جمالكِ إلى كل من يعرفكِ، وجمالكِ ليس سوى انعكاسٍ لروحٍ نقيّة.",
+  "وحين أحتاج إلى مكانٍ يشبه الأمان، أجده في حضنكِ، أجمل حضنٍ في هذا العالم.",
+  "تحبين الورد، وأنا أحبكِ أنتِ. فالورد يذبل أما حبي لكِ فيزهر كل يوم.",
+  "وهذا أول عيد ميلادٍ نحتفل به معاً، وأتمنى أن يكون أول أعيادٍ كثيرة نعدّها سوياً.",
+  "كل عامٍ وأنتِ بخير، وكل عامٍ وأنتِ حبيبتي، وكل عامٍ وقلبي في أمانٍ بين يديكِ. ❤️"
+];
+var cv = document.getElementById('c'), g = cv.getContext('2d');
+var W, H, fs, cols, rows, drops, mask, revealing = false, t0, seq = [];
+var CH = "01ABCDEFGHIJKLMNOPQRSTUVWXYZابتثجحخدذرزسشصضطعغفقكلمنهوي❤";
+function rc(){ return CH[Math.floor(Math.random()*CH.length)] }
+function setup(){
+  W = cv.width = innerWidth; H = cv.height = innerHeight;
+  fs = W < 500 ? 11 : 16; cols = Math.ceil(W/fs); rows = Math.ceil(H/fs);
+  drops = []; for(var i=0;i<cols;i++) drops.push(Math.random()*-60);
+  mask = [];
+  var s = Math.min(W*0.38, H*0.2), cx = W/2, cy = H*0.36;
+  for(var r=0;r<rows;r++) for(var c=0;c<cols;c++){
+    var x = (c*fs+fs/2-cx)/s, y = -(r*fs+fs/2-cy)/s, a = x*x+y*y-1;
+    if(a*a*a - x*x*y*y*y <= 0) mask.push({x:c*fs,y:r*fs,d:Math.hypot(x,y-0.3),ch:rc()});
+  }
+  g.fillStyle = '#08000c'; g.fillRect(0,0,W,H);
+}
+function frame(){
+  g.fillStyle = 'rgba(8,0,12,.13)'; g.fillRect(0,0,W,H);
+  g.font = fs+'px monospace'; g.textBaseline = 'top';
+  for(var i=0;i<cols;i++){
+    var y = drops[i]*fs;
+    g.fillStyle = Math.random()<.15 ? '#ffd6ea' : '#ff3d8b';
+    g.fillText(rc(), i*fs, y);
+    if(y > H && Math.random() > .975) drops[i] = 0;
+    drops[i]++;
+  }
+  if(revealing){
+    var p = Math.min(1,(Date.now()-t0)/1800)*1.6;
+    for(var k=0;k<mask.length;k++){
+      var m = mask[k]; if(m.d > p) continue;
+      if(Math.random()<.04) m.ch = rc();
+      g.fillStyle = '#08000c'; g.fillRect(m.x,m.y,fs,fs);
+      g.fillStyle = Math.random()<.12 ? '#ff9ac4' : '#ff2d55';
+      g.fillText(m.ch, m.x, m.y);
+    }
+  }
+}
+function petals(){
+  var e = ['🌹','🌸','🌹','❤️'];
+  for(var i=0;i<14;i++){
+    var d = document.createElement('div'); d.className = 'pt';
+    d.textContent = e[i%e.length]; d.style.fontSize = (20+Math.random()*16)+'px';
+    d.style.left = Math.random()*94+'%';
+    d.style.animationDuration = (8+Math.random()*7)+'s';
+    d.style.animationDelay = (Math.random()*6)+'s';
+    document.body.appendChild(d);
+    setTimeout(function(el){el.remove()}, 22000, d);
+  }
+}
+var ln = document.getElementById('ln'), again = document.getElementById('again');
+function showLine(i){
+  ln.classList.add('hide');
+  setTimeout(function(){ ln.textContent = LINES[i]; ln.classList.remove('hide'); }, 800);
+}
+function later(fn, ms){ seq.push(setTimeout(fn, ms)) }
+function run(){
+  seq.forEach(clearTimeout); seq = []; revealing = false; setup();
+  var num = document.getElementById('num'), txt = document.getElementById('txt'), ph = document.getElementById('photo');
+  txt.classList.remove('on'); ph.classList.remove('on'); again.style.display = 'none';
+  ln.textContent = ''; num.className = ''; num.textContent = '3';
+  later(function(){ num.textContent = '2' }, 1200);
+  later(function(){ num.textContent = '1' }, 2400);
+  later(function(){ num.className = 'out'; t0 = Date.now(); revealing = true }, 3600);
+  later(function(){
+    txt.classList.add('on'); petals();
+    if(PHOTO){ ph.src = PHOTO; ph.style.display = 'block'; setTimeout(function(){ph.classList.add('on')},50); }
+  }, 5400);
+  LINES.forEach(function(_, i){ later(function(){ showLine(i) }, 7400 + i*5600) });
+  later(function(){ again.style.display = 'inline-block'; petals(); }, 7400 + LINES.length*5600);
+}
+/* موسيقى هادئة مولّدة داخل المتصفح */
+var AC, master, mt, muted = false;
+function music(){
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = .22;
+    var dl = AC.createDelay(); dl.delayTime.value = .38;
+    var fb = AC.createGain(); fb.gain.value = .42;
+    dl.connect(fb); fb.connect(dl); master.connect(AC.destination); master.connect(dl); dl.connect(AC.destination);
+    var ch = [[220,261.63,329.63,440],[174.61,220,261.63,349.23],[261.63,329.63,392,523.25],[196,246.94,293.66,392]];
+    var pat = [0,1,2,3,2,1,2,1], n = 0;
+    function pluck(f, t){
+      var o = AC.createOscillator(), a = AC.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      a.gain.setValueAtTime(0,t); a.gain.linearRampToValueAtTime(.5,t+.02); a.gain.exponentialRampToValueAtTime(.001,t+1.7);
+      o.connect(a); a.connect(master); o.start(t); o.stop(t+1.8);
+    }
+    mt = setInterval(function(){
+      var c = ch[Math.floor(n/8)%4];
+      pluck(c[pat[n%8]], AC.currentTime+.05);
+      if(n%8===0) pluck(c[0]/2, AC.currentTime+.05);
+      n++;
+    }, 380);
+    document.getElementById('snd').style.display = 'block';
+  }catch(e){}
+}
+document.getElementById('snd').onclick = function(){
+  muted = !muted; if(master) master.gain.value = muted ? 0 : .22; this.textContent = muted ? '🔇' : '🔊';
+};
+document.getElementById('gate').onclick = function(){
+  this.classList.add('out'); music(); run();
+};
+setup(); setInterval(frame, 55);
+addEventListener('resize', setup);
+again.onclick = run;
+</script>
+</body>
+</html>
